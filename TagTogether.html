@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tab Together</title> <!-- Renamed Title -->
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles can go here if needed, but Tailwind is preferred */
+        body {
+            font-family: "Inter", sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg">
+        <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-8">Tab Together</h1> <!-- Renamed Title -->
+
+        <!-- Bill Total Input -->
+        <div class="mb-6">
+            <label for="billTotal" class="block text-gray-700 text-lg font-semibold mb-2">Total Bill Amount ($):</label>
+            <input type="number" id="billTotal" step="0.01" min="0" placeholder="e.g., 100.50"
+                   class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-lg"
+                   oninput="validateInput(this)">
+            <p id="totalBillError" class="text-red-600 text-sm mt-1 hidden">Please enter a valid positive bill amount.</p>
+        </div>
+
+        <!-- Split Type Selection -->
+        <div class="mb-8">
+            <label class="block text-gray-700 text-lg font-semibold mb-3">Choose Split Type:</label>
+            <div class="flex space-x-4">
+                <button id="equalSplitBtn"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Equal Split
+                </button>
+                <button id="proportionalSplitBtn"
+                        class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-5 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                    Proportional Split
+                </button>
+            </div>
+        </div>
+
+        <!-- Equal Split Section (initially hidden) -->
+        <div id="equalSplitSection" class="hidden bg-gray-50 p-6 rounded-lg shadow-inner mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Equal Split</h2>
+            <div class="mb-4">
+                <label for="numPeople" class="block text-gray-700 text-base font-medium mb-2">Number of People:</label>
+                <input type="number" id="numPeople" min="1" placeholder="e.g., 3"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-lg"
+                       oninput="validateInput(this)">
+                <p id="numPeopleError" class="text-red-600 text-sm mt-1 hidden">Please enter a valid positive number of people.</p>
+            </div>
+            <button id="calculateEqual"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                Calculate Equal Split
+            </button>
+            <div id="equalResult" class="mt-4 p-4 bg-green-100 rounded-lg text-green-800 font-semibold text-lg hidden"></div>
+        </div>
+
+        <!-- Proportional Split Section (initially hidden) -->
+        <div id="proportionalSplitSection" class="hidden bg-gray-50 p-6 rounded-lg shadow-inner mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Proportional Split</h2>
+            <div id="expenseInputs" class="space-y-4 mb-4">
+                <!-- Dynamic expense inputs will be added here -->
+            </div>
+            <button id="addPersonBtn"
+                    class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 mb-4">
+                Add Person
+            </button>
+            <button id="calculateProportional"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                Calculate Proportional Split
+            </button>
+            <div id="proportionalResult" class="mt-4 p-4 bg-green-100 rounded-lg text-green-800 font-semibold text-lg hidden"></div>
+            <p id="proportionalError" class="text-red-600 text-sm mt-1 hidden"></p>
+        </div>
+
+        <!-- Error/Message Box (instead of alert) -->
+        <div id="messageBox" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm text-center">
+                <p id="messageText" class="text-gray-800 text-lg mb-4"></p>
+                <button id="closeMessageBox" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg">OK</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Get DOM elements
+        const billTotalInput = document.getElementById('billTotal');
+        const totalBillError = document.getElementById('totalBillError');
+        const equalSplitBtn = document.getElementById('equalSplitBtn');
+        const proportionalSplitBtn = document.getElementById('proportionalSplitBtn');
+        const equalSplitSection = document.getElementById('equalSplitSection');
+        const proportionalSplitSection = document.getElementById('proportionalSplitSection');
+        const numPeopleInput = document.getElementById('numPeople');
+        const numPeopleError = document.getElementById('numPeopleError');
+        const calculateEqualBtn = document.getElementById('calculateEqual');
+        const equalResultDiv = document.getElementById('equalResult');
+        const expenseInputsDiv = document.getElementById('expenseInputs');
+        const addPersonBtn = document.getElementById('addPersonBtn');
+        const calculateProportionalBtn = document.getElementById('calculateProportional');
+        const proportionalResultDiv = document.getElementById('proportionalResult');
+        const proportionalErrorDiv = document.getElementById('proportionalError');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const closeMessageBox = document.getElementById('closeMessageBox');
+
+        let personCounter = 0; // To keep track of unique IDs for proportional split inputs
+
+        // --- Helper Functions ---
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} message The message to display.
+         */
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        /**
+         * Validates numeric input fields, showing an error if invalid.
+         * @param {HTMLInputElement} inputElement The input element to validate.
+         */
+        function validateInput(inputElement) {
+            const errorElementId = inputElement.id + 'Error';
+            const errorElement = document.getElementById(errorElementId);
+            const value = parseFloat(inputElement.value);
+
+            if (isNaN(value) || value < (inputElement.id === 'numPeople' ? 1 : 0)) {
+                if (errorElement) errorElement.classList.remove('hidden');
+            } else {
+                if (errorElement) errorElement.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Clears results and hides all split sections.
+         */
+        function resetUI() {
+            equalSplitSection.classList.add('hidden');
+            proportionalSplitSection.classList.add('hidden');
+            equalResultDiv.classList.add('hidden');
+            proportionalResultDiv.classList.add('hidden');
+            proportionalErrorDiv.classList.add('hidden');
+            equalResultDiv.textContent = '';
+            proportionalResultDiv.textContent = '';
+            expenseInputsDiv.innerHTML = ''; // Clear dynamic inputs
+            personCounter = 0; // Reset counter
+            // Hide all potential error messages
+            document.querySelectorAll('[id$="Error"]').forEach(el => el.classList.add('hidden'));
+        }
+
+        // --- Split Type Selection Handlers ---
+
+        equalSplitBtn.addEventListener('click', () => {
+            resetUI();
+            equalSplitSection.classList.remove('hidden');
+        });
+
+        proportionalSplitBtn.addEventListener('click', () => {
+            resetUI();
+            proportionalSplitSection.classList.remove('hidden');
+            addPersonInput(); // Add first person input automatically
+        });
+
+        // --- Equal Split Logic ---
+
+        calculateEqualBtn.addEventListener('click', () => {
+            const billTotal = parseFloat(billTotalInput.value);
+            const numPeople = parseInt(numPeopleInput.value);
+
+            if (isNaN(billTotal) || billTotal <= 0) {
+                showMessageBox("Please enter a valid positive total bill amount.");
+                billTotalInput.focus();
+                return;
+            }
+            if (isNaN(numPeople) || numPeople <= 0) {
+                showMessageBox("Please enter a valid positive number of people.");
+                numPeopleInput.focus();
+                return;
+            }
+
+            const amountPerPerson = billTotal / numPeople;
+            equalResultDiv.innerHTML = `Each person pays: <span class="font-bold text-green-900">$${amountPerPerson.toFixed(2)}</span>`;
+            equalResultDiv.classList.remove('hidden');
+        });
+
+        // --- Proportional Split Logic ---
+
+        /**
+         * Adds a new person input field for proportional split.
+         */
+        function addPersonInput() {
+            personCounter++;
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-2';
+            div.innerHTML = `
+                <input type="text" id="personName${personCounter}" placeholder="Person ${personCounter} Name"
+                       class="flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 text-base">
+                <input type="number" id="personAmount${personCounter}" step="0.01" min="0" placeholder="Amount Spent ($)"
+                       class="w-32 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 text-base">
+                <button type="button" class="remove-person-btn bg-red-500 hover:bg-red-600 text-white p-2 rounded-md transition duration-200">
+                    &times;
+                </button>
+            `;
+            expenseInputsDiv.appendChild(div);
+
+            // Add event listener for the new remove button
+            div.querySelector('.remove-person-btn').addEventListener('click', (event) => {
+                event.target.closest('div').remove();
+            });
+        }
+
+        addPersonBtn.addEventListener('click', addPersonInput);
+
+        calculateProportionalBtn.addEventListener('click', () => {
+            const billTotal = parseFloat(billTotalInput.value);
+            if (isNaN(billTotal) || billTotal <= 0) {
+                showMessageBox("Please enter a valid positive total bill amount.");
+                billTotalInput.focus();
+                return;
+            }
+
+            const expenses = {};
+            let hasValidInput = false;
+            let hasError = false;
+
+            expenseInputsDiv.querySelectorAll('div.flex').forEach(div => {
+                const nameInput = div.querySelector('input[type="text"]');
+                const amountInput = div.querySelector('input[type="number"]');
+
+                const personName = nameInput.value.trim();
+                const amountSpent = parseFloat(amountInput.value);
+
+                if (personName && !isNaN(amountSpent) && amountSpent >= 0) {
+                    if (expenses[personName]) {
+                        showMessageBox(`Duplicate name "${personName}" found. Please use unique names.`);
+                        nameInput.focus();
+                        hasError = true;
+                        return;
+                    }
+                    expenses[personName] = amountSpent;
+                    hasValidInput = true;
+                } else if (personName || !isNaN(amountSpent)) {
+                    // Partially filled or invalid input for a person
+                    showMessageBox("Please ensure all person names and valid non-negative amounts are entered, or remove incomplete rows.");
+                    hasError = true;
+                    return;
+                }
+            });
+
+            if (hasError) {
+                proportionalResultDiv.classList.add('hidden');
+                proportionalErrorDiv.classList.remove('hidden');
+                proportionalErrorDiv.textContent = "Please correct the input errors.";
+                return;
+            }
+
+            if (!hasValidInput) {
+                showMessageBox("Please add at least one person and their expenses for proportional split.");
+                proportionalResultDiv.classList.add('hidden');
+                proportionalErrorDiv.classList.add('hidden'); // Clear previous error
+                return;
+            }
+
+            const totalIndividualExpenses = Object.values(expenses).reduce((sum, current) => sum + current, 0);
+
+            if (totalIndividualExpenses === 0) {
+                showMessageBox("Total individual expenses cannot be zero for proportional split unless everyone spent nothing. Please adjust.");
+                proportionalResultDiv.classList.add('hidden');
+                proportionalErrorDiv.classList.remove('hidden');
+                proportionalErrorDiv.textContent = "Total individual expenses sum to zero. Cannot calculate proportional split.";
+                return;
+            }
+
+            let resultHtml = `
+                <p class="mb-2">Total Bill: <span class="font-bold text-green-900">$${billTotal.toFixed(2)}</span></p>
+                <p class="mb-3">Individual Shares:</p>
+            `;
+            for (const person in expenses) {
+                const share = (expenses[person] / totalIndividualExpenses) * billTotal;
+                resultHtml += `<p>${person}: <span class="font-bold">$${share.toFixed(2)}</span></p>`;
+            }
+
+            proportionalResultDiv.innerHTML = resultHtml;
+            proportionalResultDiv.classList.remove('hidden');
+            proportionalErrorDiv.classList.add('hidden'); // Clear any previous error
+        });
+
+        // --- Message Box Close Handler ---
+        closeMessageBox.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+
+        // Initialize with default error state hidden for bill total
+        totalBillError.classList.add('hidden');
+        numPeopleError.classList.add('hidden');
+
+    </script>
+</body>
+</html>
